@@ -16,7 +16,7 @@ Build the HyperDX application image with the local tag `local/hyperdx:dev`.
 
 ```bash
 cd hyperdx
-make build-app IMAGE_NAME_DOCKERHUB=local/hyperdx IMAGE_VERSION=dev IMAGE_VERSION_SUB_TAG=""
+make build-app IMAGE_NAME_DOCKERHUB=local/hyperdx IMAGE_VERSION=dev1234 IMAGE_VERSION_SUB_TAG=""
 ```
 
 ### 2. Deploy with Helm

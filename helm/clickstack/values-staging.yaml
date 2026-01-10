@@ -1,0 +1,26 @@
+hyperdx:
+  image:
+    repository: local/hyperdx
+    tag: dev123
+  # Connect to external MongoDB in 'mongodb' namespace
+  mongoUri: mongodb://my-user:staging-password-change-me@mongodb-staging-svc.mongodb.svc.cluster.local:27017/hyperdx?authMechanism=SCRAM-SHA-256&authSource=admin&replicaSet=mongodb-staging
+  # Connect to ClickHouse in 'clickhouse' namespace
+  defaultConnections: |
+    [
+      {
+        "name": "Local ClickHouse",
+        "host": "http://clickhouse-clickhouse-staging.clickhouse.svc.cluster.local:8123",
+        "port": 8123,
+        "username": "app",
+        "password": "{{ .Values.clickhouse.config.users.appUserPassword }}"
+      }
+    ]
+
+otel:
+  enabled: false
+
+clickhouse:
+  enabled: false
+
+mongodb:
+  enabled: false

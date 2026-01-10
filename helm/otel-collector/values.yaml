@@ -1,0 +1,97 @@
+otel:
+  image:
+    repository: docker.clickhouse.com/clickhouse/clickstack-otel-collector
+    tag:
+    pullPolicy: IfNotPresent
+  replicas: 1
+  resources:
+    {}
+    # Example:
+    # requests:
+    #   memory: "127Mi"
+    #   cpu: "100m"
+    # limits:
+    #   memory: "256Mi"
+    #   cpu: "200m"
+  # Pod-level annotations (applied to the deployment pods)
+  annotations:
+    {}
+    # myAnnotation: "myValue"
+  # Add nodeSelector and tolerations for otel-collector service
+  nodeSelector:
+    {}
+    # Example:
+    # kubernetes.io/os: linux
+    # node-role.kubernetes.io/worker: "true"
+  tolerations:
+    []
+    # Example:
+    # - key: "key1"
+    #   operator: "Equal"
+    #   value: "value1"
+    #   effect: "NoSchedule"
+  port: 13133
+  nativePort: 24225
+  grpcPort: 4317
+  httpPort: 4318
+  healthPort: 8888
+  enabled: true
+  env:
+    []
+    # Additional environment variables can be configured here
+    # Example:
+    # - name: CUSTOM_VAR
+    #   value: "my-value"
+    # - name: SECRET_VAR
+    #   valueFrom:
+    #     secretKeyRef:
+    #       name: my-secret
+    #       key: secret-key
+  # Custom OTEL Collector config - allows you to provide your own OTEL Collector configuration
+  # Provide your OTEL Collector configuration as a multi-line string
+  # This will be mounted as /etc/otelcol-contrib/custom.config.yaml and
+  # the CUSTOM_OTELCOL_CONFIG_FILE environment variable will point to it
+  # Example:
+  # customConfig: |
+  #   receivers:
+  #     hostmetrics:
+  #       collection_interval: 5s
+  #       scrapers:
+  #         cpu:
+  #         load:
+  #         memory:
+  #   service:
+  #     pipelines:
+  #       metrics/hostmetrics:
+  #         receivers: [hostmetrics]
+  #         processors: [memory_limiter, batch]
+  #         exporters: [clickhouse]
+  customConfig:
+  # Opamp server URL - defaults to the app service. Customize if you want to use a different Opamp server.
+  # Leave empty if you want to use the app service.
+  # Example: opampServerUrl: "http://custom-opamp-server:4320"
+  opampServerUrl:
+  # Clickhouse endpoint - defaults to chart's Clickhouse service. Customize if you want to use a different Clickhouse service.
+  # Leave empty if you want to use the chart's Clickhouse service.
+  # Example: clickhouseEndpoint: "tcp://custom-clickhouse-service:9000"
+  clickhouseEndpoint:
+  clickhouseUser:
+  clickhousePassword:
+  # Clickhouse Prometheus endpoint - defaults to chart's Clickhouse prometheus service. Customize if you want to use a different Clickhouse prometheus service.
+  # Leave empty if prometheus is disabled.
+  # Example: clickhousePrometheusEndpoint: "http://custom-clickhouse-service:9363"
+  clickhousePrometheusEndpoint:
+  # Clickhouse database to send logs/traces/metrics to. Defaults to "default"
+  clickhouseDatabase: "default"
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 10
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3

@@ -1,0 +1,42 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: infrastructure
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: Cluster-wide infrastructure components (operators)
+  
+  # Allow deployment to operator namespaces
+  destinations:
+    - namespace: clickhouse
+      server: https://kubernetes.default.svc
+    - namespace: mongodb
+      server: https://kubernetes.default.svc
+    - namespace: argocd
+      server: https://kubernetes.default.svc
+    - namespace: kube-system
+      server: https://kubernetes.default.svc
+    - namespace: opentelemetry-operator-system
+      server: https://kubernetes.default.svc
+    - namespace: cert-manager
+      server: https://kubernetes.default.svc
+  
+  # Allow sources from tfx-gitops repo and official Helm charts
+  sourceRepos:
+    - https://github.com/tracefox-ai/tfx-gitops.git
+    - https://docs.altinity.com/clickhouse-operator
+    - https://mongodb.github.io/helm-charts
+    - https://open-telemetry.github.io/opentelemetry-helm-charts
+    - https://charts.jetstack.io
+  
+  # Allow cluster-scoped resources for operators
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  
+  # Allow all namespaced resources
+  namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'

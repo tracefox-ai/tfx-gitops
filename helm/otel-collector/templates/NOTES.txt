@@ -1,0 +1,8 @@
+1. Check the OpenTelemetry Collector status:
+   kubectl get opentelemetrycollector {{ include "otel-collector.fullname" . }} -n {{ .Values.namespace }}
+
+3. View collector logs:
+   kubectl logs -n {{ .Values.namespace }} -l app.kubernetes.io/name={{ include "otel-collector.name" . }} --tail=50
+
+4. Describe the collector resource for details:
+   kubectl describe opentelemetrycollector {{ include "otel-collector.fullname" . }} -n {{ .Values.namespace }}

@@ -1,0 +1,42 @@
+# Production environment values for otel-collector
+
+namespace: "default"
+
+# ClickHouse endpoint for production (adjust based on your setup)
+env:
+  - name: CLICKHOUSE_ENDPOINT
+    value: "tcp://clickhouse-clickhouse-production.clickhouse.svc.cluster.local:9000"
+  - name: CLICKHOUSE_SERVER_ENDPOINT
+    value: "tcp://clickhouse-clickhouse-production.clickhouse.svc.cluster.local:9000"
+  - name: CLICKHOUSE_PROMETHEUS_METRICS_ENDPOINT
+    value: "http://chi-clickhouse-production-tracefox-0-0.clickhouse.svc.cluster.local:9363"
+  - name: CLICKHOUSE_USER
+    value: "otelcollector"
+  - name: CLICKHOUSE_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: clickhouse-otel-secret
+        key: password
+  - name: HYPERDX_OTEL_EXPORTER_CLICKHOUSE_DATABASE
+    value: "default"
+  - name: HYPERDX_LOG_LEVEL
+    value: "info"
+  # OpAMP server URL - required by the collector image
+  # Set to the HyperDX app service if available, or a placeholder if not
+  - name: OPAMP_SERVER_URL
+    value: "http://clickstack-production-app:4320"
+  # Uncomment if you have the HyperDX app running and want to use API key authentication
+  # - name: HYPERDX_API_KEY
+  #   valueFrom:
+  #     secretKeyRef:
+  #       name: clickstack-production-app-secrets
+  #       key: api-key
+
+# Production resource limits
+resources:
+  requests:
+    memory: "256Mi"
+    cpu: "200m"
+  limits:
+    memory: "512Mi"
+    cpu: "500m"

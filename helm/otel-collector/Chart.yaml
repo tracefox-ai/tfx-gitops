@@ -1,0 +1,24 @@
+apiVersion: v2
+name: otel-collector
+description: A Helm chart for OpenTelemetry Collector using the OpenTelemetry Operator
+type: application
+version: 0.1.0
+appVersion: "2.8.0"
+
+keywords:
+  - opentelemetry
+  - observability
+  - collector
+  - tracing
+  - metrics
+  - logs
+
+home: https://opentelemetry.io
+
+sources:
+  - https://github.com/tracefox-ai/tfx-gitops
+  - https://github.com/open-telemetry/opentelemetry-operator
+
+maintainers:
+  - name: TraceFox Team
+    email: support@tracefox.ai

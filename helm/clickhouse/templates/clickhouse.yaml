@@ -1,0 +1,169 @@
+---
+{{- if .Values.clickhouse.enabled }}
+{{- include "clickhouse.validateValues" . }}
+apiVersion: clickhouse.altinity.com/v1
+kind: ClickHouseInstallation
+metadata:
+  name: {{ .Values.clickhouse.name }}
+  namespace: {{ include "clickhouse.namespace" . }}
+  labels:
+    {{- include "clickhouse.labels" . | nindent 4 }}
+spec:
+  defaults:
+    templates:
+      podTemplate: {{ .Values.clickhouse.templates.podTemplate }}
+      dataVolumeClaimTemplate: >-
+        {{ .Values.clickhouse.templates.dataVolumeClaimTemplate }}
+      serviceTemplate: {{ .Values.clickhouse.templates.serviceTemplate }}
+  configuration:
+    users:
+      user2/networks/ip: "::/0"
+      user2/password: password
+      user2/profile: default
+
+      # {{- if .Values.clickhouse.users.admin.enabled }}
+      # {{ .Values.clickhouse.users.admin.username }}:
+      #   password:
+      #     valueFrom:
+      #       secretKeyRef:
+      #         name: {{ include "clickhouse.adminSecretName" . }}
+      #         key: {{ include "clickhouse.adminSecretKey" . }}
+      #   networks:
+      #     - ip: {{ .Values.clickhouse.users.admin.networks.ip | quote }}
+      #   profile: {{ .Values.clickhouse.users.admin.profile }}
+      # {{- end }}
+      # {{- if .Values.clickhouse.users.default.enabled }}
+      # default:
+      #   {{- if .Values.clickhouse.users.default.password }}
+      #   password:
+      #     valueFrom:
+      #       secretKeyRef:
+      #         name: {{ include "clickhouse.defaultSecretName" . }}
+      #         key: {{ include "clickhouse.defaultSecretKey" . }}
+      #   {{- else }}
+      #   password: ""
+      #   {{- end }}
+      #   networks:
+      #     - ip: {{ .Values.clickhouse.users.default.networks.ip | quote }}
+      #   profile: {{ .Values.clickhouse.users.default.profile }}
+      # {{- end }}
+      # {{- if .Values.clickhouse.users.app.enabled }}
+      # app:
+      #   password:
+      #     valueFrom:
+      #       secretKeyRef:
+      #         name: {{ include "clickhouse.appSecretName" . }}
+      #         key: {{ include "clickhouse.appSecretKey" . }}
+      #   networks:
+      #     {{- if .Values.clickhouse.users.app.networks }}
+      #     {{- range .Values.clickhouse.users.app.networks }}
+      #     {{- if .ip }}
+      #     - ip: {{ .ip | quote }}
+      #     {{- else if .host_regexp }}
+      #     - host_regexp: {{ .host_regexp | quote }}
+      #     {{- end }}
+      #     {{- end }}
+      #     {{- end }}
+      #   profile: {{ .Values.clickhouse.users.app.profile }}
+      #   {{- if .Values.clickhouse.users.app.grants }}
+      #   grants:
+      #     {{- range .Values.clickhouse.users.app.grants }}
+      #     - {{ . | quote }}
+      #     {{- end }}
+      #   {{- end }}
+      # {{- end }}
+      # {{- if .Values.clickhouse.users.otelcollector.enabled }}
+      # {{ .Values.clickhouse.users.otelcollector.username | default "otelcollector" }}:
+      #   password:
+      #     valueFrom:
+      #       secretKeyRef:
+      #         name: {{ include "clickhouse.otelcollectorSecretName" . }}
+      #         key: {{ include "clickhouse.otelcollectorSecretKey" . }}
+      #   networks:
+      #     {{- if .Values.clickhouse.users.otelcollector.networks }}
+      #     {{- range .Values.clickhouse.users.otelcollector.networks }}
+      #     {{- if .ip }}
+      #     - ip: {{ .ip | quote }}
+      #     {{- else if .host_regexp }}
+      #     - host_regexp: {{ .host_regexp | quote }}
+      #     {{- end }}
+      #     {{- end }}
+      #     {{- end }}
+      #   profile: {{ .Values.clickhouse.users.otelcollector.profile }}
+      #   {{- if .Values.clickhouse.users.otelcollector.grants }}
+      #   grants:
+      #     {{- range .Values.clickhouse.users.otelcollector.grants }}
+      #     - {{ . | quote }}
+      #     {{- end }}
+      #   {{- end }}
+      # {{- end }}
+    {{- if .Values.clickhouse.configuration.profiles }}
+    profiles:
+      {{- toYaml .Values.clickhouse.configuration.profiles | nindent 6 }}
+    {{- end }}
+    {{- if .Values.clickhouse.configuration.quotas }}
+    quotas:
+      {{- toYaml .Values.clickhouse.configuration.quotas | nindent 6 }}
+    {{- end }}
+    {{- if .Values.clickhouse.configuration.settings }}
+    settings:
+      {{- toYaml .Values.clickhouse.configuration.settings | nindent 6 }}
+    {{- end }}
+    clusters:
+      - name: {{ .Values.clickhouse.cluster.name | quote }}
+        layout:
+          shardsCount: {{ int .Values.clickhouse.cluster.shardsCount }}
+          replicasCount: {{ int .Values.clickhouse.cluster.replicasCount }}
+    {{- if .Values.clickhouse.zookeeper.enabled }}
+    zookeeper:
+      nodes:
+        {{- range $index := until (int .Values.keeper.replicasCount) }}
+        - host: >-
+            {{ printf "%s-%d.%s-headless.%s.svc.cluster.local" $.Values.keeper.name $index $.Values.keeper.name (include "clickhouse.namespace" $) }}
+          port: {{ $.Values.keeper.zookeeperPort }}
+        {{- end }}
+    {{- end }}
+  templates:
+    podTemplates:
+      - name: {{ .Values.clickhouse.templates.podTemplate }}
+        metadata:
+          labels:
+            {{- include "clickhouse.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: server
+          {{- with .Values.clickhouse.podAnnotations }}
+          annotations:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+        spec:
+          containers:
+            - name: clickhouse
+              image: {{ include "clickhouse.image" . }}
+              {{- with .Values.clickhouse.resources }}
+              resources:
+                {{- toYaml . | nindent 16 }}
+              {{- end }}
+              {{- with .Values.clickhouse.env }}
+              env:
+                {{- toYaml . | nindent 16 }}
+              {{- end }}
+    volumeClaimTemplates:
+      - name: {{ .Values.clickhouse.templates.dataVolumeClaimTemplate }}
+        spec:
+          accessModes:
+            {{- toYaml .Values.clickhouse.storage.accessModes | nindent 12 }}
+          {{- if .Values.clickhouse.storage.class }}
+          storageClassName: {{ .Values.clickhouse.storage.class }}
+          {{- end }}
+          resources:
+            requests:
+              storage: {{ .Values.clickhouse.storage.size }}
+    serviceTemplates:
+      - name: {{ .Values.clickhouse.templates.serviceTemplate }}
+        spec:
+          ports:
+            {{- range .Values.clickhouse.service.ports }}
+            - name: {{ .name }}
+              port: {{ .port }}
+            {{- end }}
+          type: {{ .Values.clickhouse.service.type }}
+{{- end }}

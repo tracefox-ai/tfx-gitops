@@ -1,0 +1,60 @@
+# Staging environment values for otel-collector
+namespace: "default"
+
+otel:
+  # ClickHouse endpoint for staging (in 'clickhouse' namespace)
+  # For hybrid dev (ClickHouse on localhost), create a service similar to opamp-server-local
+  # For K8s deployment, use the Kubernetes service:
+  clickhouseEndpoint: "tcp://clickhouse-clickhouse-staging.clickhouse.svc.cluster.local:9000"
+  clickhouseServerEndpoint: "clickhouse-clickhouse-staging.clickhouse.svc.cluster.local:9000"
+  clickhousePrometheusEndpoint: "http://chi-clickhouse-staging-tracefox-0-0.clickhouse.svc.cluster.local:9363"
+  # For localhost ClickHouse (if port-forwarding or service created):
+  # clickhouseEndpoint: "tcp://localhost:9000"
+  # clickhouseServerEndpoint: "localhost:9000"
+  # clickhousePrometheusEndpoint: "http://localhost:9363"
+  clickhouseUser: "user2"
+  clickhousePassword: "password"
+  clickhouseDatabase: "tracefox"
+
+  # OpAMP server URL
+  # For hybrid dev (collector in K8s, OpAMP server on localhost):
+  #   - Use Kubernetes service: "http://opamp-server-local:4320" (same namespace)
+  #   - Or full FQDN: "http://opamp-server-local.default.svc.cluster.local:4320"
+  #   - Docker Desktop: "http://host.docker.internal:4320" (may not work from K8s pods)
+  #   - Direct host IP: "http://192.168.50.204:4320" (requires firewall access)
+  # For K8s deployment (OpAMP server in Kubernetes):
+  #   value: "http://clickstack-staging-app.default.svc.cluster.local:4320"
+  #   or: value: "http://clickstack-staging-app:4320"  # (same namespace)
+  # NOTE: Even in unmanaged mode, the clickstack-otel-collector image uses OpAMP supervisor
+  # If the OpAMP server isn't sending config, the collector won't start.
+  # Leave empty if you want the supervisor to use fallback/default config
+  # opampServerUrl: "http://opamp-server-local:4320"  # Kubernetes service pointing to localhost OpAMP server
+  opampServerUrl: "http://opamp-server-local.default.svc.cluster.local:4320"
+
+  # HyperDX configuration
+  hyperdxLogLevel: "info"
+
+  # Uncomment if you have the HyperDX app running and want to use API key authentication
+  # hyperdxApiKey:
+  #   secretName: "clickstack-staging-app-secrets"
+  #   secretKey: "api-key"
+
+  # Custom config to ensure health_check extension is always included
+  # This merges with the OpAMP-provided config
+  customConfig: |
+    extensions:
+      health_check:
+        endpoint: :13133
+    service:
+      extensions: [health_check]
+
+  # Additional environment variables (if needed)
+  env: []
+    # Example:
+    # - name: CUSTOM_VAR
+    #   value: "my-value"
+
+  livenessProbe:
+    enabled: false
+  readinessProbe:
+    enabled: false

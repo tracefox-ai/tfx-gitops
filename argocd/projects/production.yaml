@@ -1,0 +1,32 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: production
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: Production environment applications
+  
+  # Allow deployment to default namespace and argocd namespace (for App of Apps)
+  destinations:
+    - namespace: default
+      server: https://kubernetes.default.svc
+    - namespace: argocd
+      server: https://kubernetes.default.svc
+    - namespace: clickhouse
+      server: https://kubernetes.default.svc
+    - namespace: mongodb
+      server: https://kubernetes.default.svc
+  
+  # Allow sources from tfx-gitops repo only
+  sourceRepos:
+    - https://github.com/tracefox-ai/tfx-gitops.git
+  
+  # Deny cluster-scoped resources
+  clusterResourceWhitelist: []
+  
+  # Allow all namespaced resources
+  namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'

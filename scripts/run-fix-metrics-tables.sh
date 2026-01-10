@@ -1,0 +1,34 @@
+#!/bin/bash
+set -e
+
+# Configuration
+NAMESPACE="clickhouse"
+
+# Find the first running ClickHouse pod
+POD_NAME=$(kubectl get pods -n "$NAMESPACE" -l clickhouse.altinity.com/ready=yes -o jsonpath="{.items[0].metadata.name}")
+
+if [ -z "$POD_NAME" ]; then
+  echo "❌ No running ClickHouse pods found in namespace '$NAMESPACE'"
+  exit 1
+fi
+
+echo "🚀 Found ClickHouse Pod: $POD_NAME"
+
+# Resolve script directory to correctly find the SQL file
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+SQL_FILE="$SCRIPT_DIR/fix-metrics-tables.sql"
+
+if [ ! -f "$SQL_FILE" ]; then
+  echo "❌ SQL file not found: $SQL_FILE"
+  exit 1
+fi
+
+echo "🚀 Running fix-metrics-tables.sql..."
+
+# Execute SQL via kubectl exec and clickhouse-client
+# -m: multi-line
+# -n: multi-query
+cat "$SQL_FILE" | kubectl exec -i -n "$NAMESPACE" "$POD_NAME" -- clickhouse-client -mn --host=localhost --port=9000
+
+echo ""
+echo "✅ Metrics tables fixed successfully."

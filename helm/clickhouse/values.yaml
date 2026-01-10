@@ -1,0 +1,300 @@
+---
+# Default values for clickhouse
+# This is a YAML-formatted file.
+
+nameOverride: ""
+fullnameOverride: ""
+
+# ClickHouse Keeper configuration
+keeper:
+  enabled: true
+  # Installation name - used for Kubernetes resource names (pods, services)
+  # If you want clusterName in resource names, change this to include it (e.g., "tracefox-keeper")
+  name: clickhouse-keeper
+  # Internal cluster name - used for ClickHouse Keeper's logical cluster configuration
+  # This does NOT affect Kubernetes resource names
+  clusterName: tracefox
+  replicasCount: 3
+  zookeeperPort: 9181  # ClickHouse Keeper uses 9181 for ZooKeeper compatibility (not 2181)
+
+  image:
+    repository: clickhouse/clickhouse-keeper
+    tag: "24.3-alpine"  # Pinned version for stability
+    pullPolicy: IfNotPresent
+
+  resources:
+    requests:
+      memory: "256M"
+      cpu: "1"
+    limits:
+      memory: "4Gi"
+      cpu: "2"
+
+  securityContext:
+    fsGroup: 101
+
+  storage:
+    size: 10Gi
+    class: hostpath
+    accessModes:
+      - ReadWriteOnce
+
+  templates:
+    podTemplate: clickhouse-keeper-pod
+    dataVolumeClaimTemplate: both-paths
+
+  annotations:
+    prometheus.io/port: "7000"
+    prometheus.io/scrape: "true"
+
+  podAnnotations:
+    prometheus.io/port: "7000"
+    prometheus.io/scrape: "true"
+
+  configuration:
+    settings:
+      logger/level: "trace"
+      logger/console: "true"
+      listen_host: "0.0.0.0"
+      # ClickHouse Keeper uses port 9181 by default for ZooKeeper compatibility
+      # (The Altinity operator automatically configures this)
+      keeper_server/four_letter_word_white_list: "*"
+      keeper_server/coordination_settings/raft_logs_level: "information"
+      # Note: The Altinity operator automatically adds SSL/TLS configuration.
+      # Certificate file errors are non-critical warnings - ClickHouse Keeper will function
+      # normally without SSL certificates for internal cluster communication.
+      # To enable SSL/TLS, provide proper certificate files at:
+      # - /etc/clickhouse-keeper/server.crt
+      # - /etc/clickhouse-keeper/server.key
+      # - /etc/clickhouse-keeper/dhparam.pem
+      prometheus/endpoint: "/metrics"
+      prometheus/port: "7000"
+      prometheus/metrics: "true"
+      prometheus/events: "true"
+      prometheus/asynchronous_metrics: "true"
+      prometheus/status_info: "false"
+
+# ClickHouse Installation configuration
+clickhouse:
+  enabled: true
+  name: clickhouse
+  cluster:
+    name: tracefox
+    shardsCount: 2
+    replicasCount: 2
+
+  image:
+    repository: clickhouse/clickhouse-server
+    tag: 25.7-alpine
+    pullPolicy: IfNotPresent
+
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+
+  storage:
+    size: 5Gi
+    class: hostpath
+    accessModes:
+      - ReadWriteOnce
+
+  templates:
+    podTemplate: clickhouse-pod
+    dataVolumeClaimTemplate: clickhouse-data
+    serviceTemplate: clickhouse-service
+
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8001"
+    prometheus.io/path: "/metrics"
+
+  # Environment variables for ClickHouse container
+  env: []
+
+  users:
+    admin:
+      username: admin
+      enabled: true
+      # Option 1: Direct password (NOT recommended for production)
+      password: admin
+      # Option 2: Use existing secret (recommended for production)
+      # existingSecret: "my-clickhouse-secret"
+      # existingSecretKey: "admin-password"
+      networks:
+        # Consider restricting this in production (e.g., "10.0.0.0/8")
+        ip: "::/0"
+      profile: default
+    default:
+      enabled: true
+      # Option 1: Direct password (empty password means no password required)
+      password: ""
+      # Option 2: Use existing secret (recommended for production)
+      # existingSecret: "my-clickhouse-secret"
+      # existingSecretKey: "default-password"
+      networks:
+        # Consider restricting this in production (e.g., "10.0.0.0/8")
+        ip: "::/0"
+      profile: default
+    # App user for HyperDX - readonly access
+    app:
+      enabled: true
+      # Option 1: Direct password
+      password: "hyperdx"
+      # Option 2: Use existing secret (recommended for production)
+      # existingSecret: "my-clickhouse-secret"
+      # existingSecretKey: "app-password"
+      networks:
+        # Kubernetes cluster CIDRs - matches original setup
+        - ip: "10.0.0.0/8"
+        - ip: "172.16.0.0/12"
+        - ip: "192.168.0.0/16"
+        - host_regexp: ".*\\.svc\\.cluster\\.local$"
+      profile: readonly
+      # Grants for readonly access (SELECT only)
+      grants:
+        - "GRANT SHOW ON *.*"
+        - "GRANT SELECT ON system.*"
+        - "GRANT SELECT ON default.*"
+    # OTEL collector user - write access for logs/traces/metrics
+    otelcollector:
+      enabled: true
+      username: "otelcollector"
+      # Option 1: Direct password
+      password: "otelcollectorpass"
+      # Option 2: Use existing secret (recommended for production)
+      # existingSecret: "my-clickhouse-secret"
+      # existingSecretKey: "otelcollector-password"
+      networks:
+        # Kubernetes cluster CIDRs - matches original setup
+        - ip: "10.0.0.0/8"
+        - ip: "172.16.0.0/12"
+        - ip: "192.168.0.0/16"
+        - host_regexp: ".*\\.svc\\.cluster\\.local$"
+      profile: default
+      # Grants for write access (INSERT, CREATE, SELECT, SHOW)
+      grants:
+        - "GRANT SELECT,INSERT,CREATE,SHOW ON default.*"
+
+  configuration:
+    settings:
+      # Core ClickHouse settings
+      logger/level: "information"
+      logger/console: "true"
+      listen_host: "0.0.0.0"
+      http_port: "8123"
+      tcp_port: "9000"
+      interserver_http_port: "9009"
+
+      # Distributed settings
+      distributed_ddl/path: "/clickhouse/task_queue/ddl"
+
+      # Memory and performance
+      # Note: max_memory_usage is a user-level setting and should be in profiles, not here
+      max_concurrent_queries: "100"
+      uncompressed_cache_size: "8589934592"
+      mark_cache_size: "5368709120"
+
+      # Paths
+      path: "/var/lib/clickhouse/"
+      tmp_path: "/var/lib/clickhouse/tmp/"
+      user_files_path: "/var/lib/clickhouse/user_files/"
+      format_schema_path: "/var/lib/clickhouse/format_schemas/"
+
+      # Default settings
+      users_config: "users.xml"
+      default_profile: "default"
+      default_database: "default"
+      timezone: "UTC"
+
+      # Prometheus metrics
+      prometheus/endpoint: "/metrics"
+      prometheus/port: "8001"
+      prometheus/metrics: "true"
+      prometheus/events: "true"
+      prometheus/asynchronous_metrics: "true"
+      prometheus/status_info: "false"
+
+      # Logging configuration
+      query_log/database: "system"
+      query_log/table: "query_log"
+      query_log/flush_interval_milliseconds: "7500"
+
+      metric_log/database: "system"
+      metric_log/table: "metric_log"
+      metric_log/flush_interval_milliseconds: "7500"
+      metric_log/collect_interval_milliseconds: "1000"
+
+      asynchronous_metric_log/database: "system"
+      asynchronous_metric_log/table: "asynchronous_metric_log"
+      asynchronous_metric_log/flush_interval_milliseconds: "7000"
+
+      opentelemetry_span_log/database: "system"
+      opentelemetry_span_log/table: "opentelemetry_span_log"
+      opentelemetry_span_log/flush_interval_milliseconds: "7500"
+
+      part_log/database: "system"
+      part_log/table: "part_log"
+      part_log/flush_interval_milliseconds: "7500"
+
+      trace_log/database: "system"
+      trace_log/table: "trace_log"
+      trace_log/flush_interval_milliseconds: "7500"
+
+      query_thread_log/database: "system"
+      query_thread_log/table: "query_thread_log"
+      query_thread_log/flush_interval_milliseconds: "7500"
+
+      query_views_log/database: "system"
+      query_views_log/table: "query_views_log"
+      query_views_log/flush_interval_milliseconds: "7500"
+
+    profiles:
+      default:
+        allow_experimental_analyzer: 1
+        max_memory_usage: 10000000000
+        use_uncompressed_cache: 0
+        load_balancing: in_order
+        log_queries: 1
+      readonly:
+        readonly: 2
+
+    quotas:
+      default:
+        interval:
+          duration: 3600
+          queries: 0
+          errors: 0
+          result_rows: 0
+          read_rows: 0
+          execution_time: 0
+
+  zookeeper:
+    enabled: true
+
+  service:
+    type: LoadBalancer
+    ports:
+      - name: http
+        port: 8123
+      - name: tcp
+        port: 9000
+
+# Security configuration
+security:
+  # Set to true to generate a random password for admin user
+  generateRandomPassword: false
+  # Password length when generating random password
+  passwordLength: 32
+
+# External Secrets Operator configuration (optional)
+# Enable this to use External Secrets Operator for secret management
+externalSecrets:
+  enabled: false
+  secretStore: "aws-secrets-manager"  # Name of your SecretStore
+  secretStoreKind: "SecretStore"  # or "ClusterSecretStore"
+  # Path to admin password in your secret backend
+  adminPasswordPath: "clickhouse/admin-password"

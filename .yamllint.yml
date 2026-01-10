@@ -1,0 +1,34 @@
+---
+extends: default
+
+rules:
+  # Allow template syntax
+  line-length:
+    max: 120
+    level: warning
+  # Allow template braces
+  braces:
+    max-spaces-inside: -1
+    max-spaces-inside-empty: -1
+  # Allow template brackets
+  brackets:
+    max-spaces-inside: -1
+    max-spaces-inside-empty: -1
+  # Allow comments for documentation
+  comments:
+    min-spaces-from-content: 1
+  # Allow document start to be optional for templates
+  document-start:
+    present: false
+  # Allow empty lines for readability
+  empty-lines:
+    max: 2
+    max-start: 0
+    max-end: 1
+  # Allow indentation for template logic
+  indentation:
+    spaces: 2
+    indent-sequences: true
+    check-multi-line-strings: false
+  # Allow trailing spaces in templates
+  trailing-spaces: disable
