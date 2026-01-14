@@ -259,6 +259,7 @@ clickhouse:
         use_uncompressed_cache: 0
         load_balancing: in_order
         log_queries: 1
+        prefer_global_in_and_join: 1
       readonly:
         readonly: 2
 

@@ -6,6 +6,7 @@
             <use_uncompressed_cache>0</use_uncompressed_cache>
             <load_balancing>in_order</load_balancing>
             <log_queries>1</log_queries>
+            <prefer_global_in_and_join>1</prefer_global_in_and_join>
         </default>
         <readonly>
             <readonly>2</readonly>

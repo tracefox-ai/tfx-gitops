@@ -1,7 +1,6 @@
-CREATE DATABASE IF NOT EXISTS tracefox;
-
 -- OTEL METRICS GAUGE
-CREATE TABLE IF NOT EXISTS tracefox.otel_metrics_gauge
+-- Local table: collectors write directly here (optimal for performance)
+CREATE TABLE IF NOT EXISTS tracefox.otel_metrics_gauge ON CLUSTER '{cluster}'
 (
     ResourceAttributes Map(LowCardinality(String), String) CODEC(ZSTD(1)),
     ResourceSchemaUrl String CODEC(ZSTD(1)),
@@ -26,14 +25,19 @@ CREATE TABLE IF NOT EXISTS tracefox.otel_metrics_gauge
     INDEX idx_attr_key mapKeys(Attributes) TYPE bloom_filter(0.01) GRANULARITY 1,
     INDEX idx_attr_value mapValues(Attributes) TYPE bloom_filter(0.01) GRANULARITY 1
 )
-ENGINE = MergeTree
+ENGINE = ReplicatedMergeTree('/clickhouse/tables/{shard}/tracefox/otel_metrics_gauge', '{replica}')
 PARTITION BY toDate(TimeUnix)
 ORDER BY (ServiceName, MetricName, Attributes, toUnixTimestamp64Nano(TimeUnix))
 TTL toDateTime(TimeUnix) + toIntervalDay(30)
 SETTINGS index_granularity = 8192, ttl_only_drop_parts = 1;
 
+-- Distributed table: frontend queries use this to aggregate across shards
+CREATE TABLE IF NOT EXISTS tracefox.otel_metrics_gauge_distributed ON CLUSTER '{cluster}' AS tracefox.otel_metrics_gauge
+ENGINE = Distributed('{cluster}', tracefox, otel_metrics_gauge, rand());
+
 -- OTEL METRICS SUM
-CREATE TABLE IF NOT EXISTS tracefox.otel_metrics_sum
+-- Local table: collectors write directly here (optimal for performance)
+CREATE TABLE IF NOT EXISTS tracefox.otel_metrics_sum ON CLUSTER '{cluster}'
 (
     ResourceAttributes Map(LowCardinality(String), String) CODEC(ZSTD(1)),
     ResourceSchemaUrl String CODEC(ZSTD(1)),
@@ -60,8 +64,12 @@ CREATE TABLE IF NOT EXISTS tracefox.otel_metrics_sum
     INDEX idx_attr_key mapKeys(Attributes) TYPE bloom_filter(0.01) GRANULARITY 1,
     INDEX idx_attr_value mapValues(Attributes) TYPE bloom_filter(0.01) GRANULARITY 1
 )
-ENGINE = MergeTree
+ENGINE = ReplicatedMergeTree('/clickhouse/tables/{shard}/tracefox/otel_metrics_sum', '{replica}')
 PARTITION BY toDate(TimeUnix)
 ORDER BY (ServiceName, MetricName, Attributes, toUnixTimestamp64Nano(TimeUnix))
 TTL toDateTime(TimeUnix) + toIntervalDay(30)
 SETTINGS index_granularity = 8192, ttl_only_drop_parts = 1;
+
+-- Distributed table: frontend queries use this to aggregate across shards
+CREATE TABLE IF NOT EXISTS tracefox.otel_metrics_sum_distributed ON CLUSTER '{cluster}' AS tracefox.otel_metrics_sum
+ENGINE = Distributed('{cluster}', tracefox, otel_metrics_sum, rand());
