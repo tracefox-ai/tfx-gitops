@@ -13,7 +13,8 @@ spec:
     path: argocd/apps
     directory:
       recurse: true
-      include: '{infrastructure,staging}/app-of-apps.yaml'  # Exclude production for now
+      include: '{infrastructure}/app-of-apps.yaml'  # Exclude production for now
+      # include: '{infrastructure,staging}/app-of-apps.yaml'  # Exclude production for now
   destination:
     # For EKS: Use https://kubernetes.default.svc if ArgoCD is running in-cluster (recommended)
     # For external ArgoCD: Use your EKS cluster endpoint (e.g., https://<cluster-id>.gr7.<region>.eks.amazonaws.com)
