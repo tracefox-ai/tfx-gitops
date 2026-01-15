@@ -15,7 +15,11 @@ spec:
       recurse: true
       include: '{infrastructure,staging}/app-of-apps.yaml'  # Exclude production for now
   destination:
-    server: https://kubernetes.default.svc
+    # For EKS: Use https://kubernetes.default.svc if ArgoCD is running in-cluster (recommended)
+    # For external ArgoCD: Use your EKS cluster endpoint (e.g., https://<cluster-id>.gr7.<region>.eks.amazonaws.com)
+    # Get your EKS endpoint with: aws eks describe-cluster --name <cluster-name> --query 'cluster.endpoint' --output text
+    # server: https://kubernetes.default.svc
+    server: arn:aws:eks:ap-southeast-1:741550145841:cluster/tfx-staging
     namespace: argocd
   syncPolicy:
     automated:
